@@ -570,7 +570,7 @@
         // ─── Parse Date ─────────────────────────────────────────────────
         function parseDate(raw) {
             if (!raw) return null;
-            raw = raw.trim();
+            raw = String(raw).trim();
 
             const monthNames = {
                 'jan': '01', 'january': '01',
@@ -581,14 +581,14 @@
                 'jun': '06', 'june': '06',
                 'jul': '07', 'july': '07',
                 'aug': '08', 'august': '08',
-                'sep': '09', 'september': '09',
+                'sep': '09', 'sept': '09', 'september': '09',
                 'oct': '10', 'october': '10',
                 'nov': '11', 'november': '11',
                 'dec': '12', 'december': '12'
             };
 
-            // Format: "04-May", "14-May", "21-May"
-            const dashMatch = raw.match(/^(\d{1,2})[- ]([A-Za-z]+)$/);
+            // Format: "04-May", "14-May", "21-May", "04-Sep-25"
+            const dashMatch = raw.match(/^(\d{1,2})[- ]([A-Za-z]+)(?:[- ]\d{2,4})?$/);
             if (dashMatch) {
                 const day = dashMatch[1].padStart(2, '0');
                 const monthKey = dashMatch[2].toLowerCase();
@@ -596,8 +596,8 @@
                 if (month) return `2025-${month}-${day}`;
             }
 
-            // Format: "11 Feb", "7 March", "28 march"
-            const spaceMatch = raw.match(/^(\d{1,2})\s+([A-Za-z]+)$/);
+            // Format: "11 Feb", "7 March", "28 march", "11 Sept 2025"
+            const spaceMatch = raw.match(/^(\d{1,2})\s+([A-Za-z]+)(?:\s+\d{2,4})?$/);
             if (spaceMatch) {
                 const day = spaceMatch[1].padStart(2, '0');
                 const monthKey = spaceMatch[2].toLowerCase();
@@ -606,12 +606,22 @@
             }
 
             // Format: "March 7", "April 3"
-            const reverseMatch = raw.match(/^([A-Za-z]+)\s+(\d{1,2})$/);
+            const reverseMatch = raw.match(/^([A-Za-z]+)\s+(\d{1,2})(?:\s+\d{2,4})?$/);
             if (reverseMatch) {
                 const monthKey = reverseMatch[1].toLowerCase();
                 const day = reverseMatch[2].padStart(2, '0');
                 const month = monthNames[monthKey];
                 if (month) return `2025-${month}-${day}`;
+            }
+
+            // dd/mm/yyyy or dd-mm-yyyy or d/m/yy
+            const dmyMatch = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+            if (dmyMatch) {
+                const day = dmyMatch[1].padStart(2, '0');
+                const month = dmyMatch[2].padStart(2, '0');
+                let year = dmyMatch[3];
+                if (year.length === 2) year = '20' + year;
+                return `${year}-${month}-${day}`;
             }
 
             // Try native Date parse as fallback
@@ -720,7 +730,7 @@
 
                 entries.push({
                     id: id++,
-                    date: date || '2025-04-15',
+                    date: date || '',
                     studio: studio ? studio.toString().trim() : 'Unknown',
                     project: project.toString().trim(),
                     budget: parseBudget(budgetRaw.toString()),
@@ -761,16 +771,21 @@
         }
 
         function formatDate(dateStr) {
+            if (!dateStr) return '—';
             const d = new Date(dateStr + 'T00:00:00');
+            if (isNaN(d.getTime())) return '—';
             return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
         }
 
         function getMonthKey(dateStr) {
+            if (!dateStr) return 'Unknown';
             const d = new Date(dateStr + 'T00:00:00');
+            if (isNaN(d.getTime())) return 'Unknown';
             return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
         }
 
         function getMonthLabel(key) {
+            if (key === 'Unknown') return 'Unknown Date';
             const [y, m] = key.split('-');
             const months = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
             return months[parseInt(m)] + ' ' + y;
@@ -778,6 +793,7 @@
 
         const monthIcons = ['','❄️','💐','🌸','🌷','☀️','🌞','🌊','🏖️','🍂','🎃','🍁','🎄'];
         function getMonthIcon(key) {
+            if (key === 'Unknown') return '📅';
             return monthIcons[parseInt(key.split('-')[1])] || '📅';
         }
 
